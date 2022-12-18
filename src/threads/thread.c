@@ -11,6 +11,8 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#define CONVERT (1<<14)
+
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -36,6 +38,9 @@ static struct thread *initial_thread;
 
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
+
+/* Load average */
+static int load_avg;
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
@@ -349,31 +354,44 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED) 
 {
-  /* Not yet implemented. */
+  struct thread* t =thread_current();
+
+  /*Set new nice value*/
+  t->nice = nice;
+  t->priority = calculate_priority(t->recent_cpu,t->nice);
+  if(t->priority <PRI_MIN)
+    t->priority = PRI_MIN;
+  else if(t->priority > PRI_MAX)
+    t->priority = PRI_MAX;
+
+ /*If running thread has larger priority than ay other new wating thread , else return yeild */
+    int max_prior =-1;
+    if(!list_empty(&ready_list))
+      max_prior = list_entry(list_front(&ready_list),struct thread, elem) ->priority;
+
+    if(thread_current() -> priority <max_prior)
+      thread_yeild();
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return float_mul_int(load_avg,100)/CONVERT;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+    return float_mul_int(thread_current ()->recent_cpu,100)/CONVERT;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -582,3 +600,116 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+/* Process fixed-point method implement*/
+
+/* Convert integer n to fixed point = n*CONVERT */
+/* Convert x (fixed - point) to integer) = x/CONVERT (round to zero) */
+/* Covert x(fixed-point) to integer (x+-CONVERT/2)/CONVERT (round to nearest) */
+
+
+/*Implement*/
+int float_add_int(int a, int b){
+  return a + b * CONVERT;
+}
+
+int float_sub_int(int a, int b){
+  return a- b * CONVERT;
+}
+
+float_mul_int(int a, int b){
+  return a*b;
+}
+
+float_div_int(int a, int b){
+  return a/b;
+}
+
+int float_add_float(int a, int b){
+  return a+b;
+}
+
+int float_sub_float(int a, int b){
+  return a - b ;
+}
+
+int float_mul_float(int a, int b){
+  int64_t tmp = (int64_t) a;
+	tmp = tmp * b/CONVERT;
+	return (int) tmp;
+}
+
+int float_div_float(int a, int b){
+  int64_t tmp = (int64_t) a;
+  tmp = tmp * CONVERT/b;
+  return (int) tmp;
+}
+
+/* Calculate methods */
+int calculate_priority(int recent_cpu, int nice){
+  return float_sub_float(float_sub_float(PRI_MAX*CONVERT,float_div_int(recent_cpu,4)),float_mul_int(nice*CONVERT,2))/CONVERT;
+}
+
+int calculate_recent_cpu(int load_avg, int nice){
+  int decay  = float_div_float(float_mul_int(load_avg,2),float_add_int(float_mul_int(load_avg,2),1));
+  return float_add_int(decay,nice);
+}
+
+/*Update values , priority*/
+
+/*Update values : recommend every second*/
+void update_values(){  
+    struct list_elem* le;
+    int ready_threads;
+
+    /*Get ready_threads*/
+    if(thread_current() == idle_thread)
+      ready_threads  = list_size(&ready_list);
+    else
+      ready_threads = list_size(&ready_list) +1 ;
+
+    /*Update load_avg */
+    load_avg = float_div_int(float_add_int(float_mul_int(load_avg,59),ready_threads),60*CONVERT);
+    
+    /*Update recent_cpu*/
+    for(le = list_begin(&all_list);le!=list_end(&all_list);le=list_next(le))
+    {
+     struct thread* t = list_entry(le, struct thread,allelem);
+      if(t != idle_thread)
+        {
+          t->recent_cpu = calculate_recent_cpu(load_avg, t->nice);
+        }
+    }
+}
+
+/*Update priority : recommend every four ticks*/
+void update_priority() {
+    struct list_elem* le;
+    int tmp;
+    
+    /*Update new priority*/
+    for(le = list_begin(&all_list);le!=list_end(&all_list);le= list_next(le))
+    {
+      struct thread* t = list_entry(le,struct thread,allelem);
+      tmp = calculate_priority(t->recent_cpu,t->nice);
+      if(tmp<PRI_MIN)
+        t->priority =PRI_MIN;
+      else if (tmp>PRI_MAX)
+        t->priority =PRI_MAX;
+      else t->priority = tmp;
+    }
+
+    /*If running thread has larger priority than ay other new wating thread , else return yeild */
+    tmp =-1;
+    if(!list_empty(&ready_list))
+      tmp = list_entry(list_front(&ready_list),struct thread, elem) ->priority;
+
+    if(thread_current() -> priority <tmp)
+      return intr_yield_on_return();
+}
+
+
+
+
+
+
