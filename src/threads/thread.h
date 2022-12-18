@@ -87,7 +87,11 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
+    int priority;                         /* Priority. */
+    int nice ;                           /* Nice Value of thread*/
+    int recent_cpu;                      /* Recent CPU usage time*/
+    int64_t sleep_time;                           /*  Sleep time*/ 
+    int64_t start_sleep_time;
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -105,7 +109,7 @@ struct thread
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
-extern bool thread_mlfqs;
+extern bool thread_mlfqs = true;
 
 void thread_init (void);
 void thread_start (void);
@@ -139,3 +143,25 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 #endif /* threads/thread.h */
+
+/*Compare two threads's list (non-empty) by priority */
+bool priority_compare(struct list_elem* le1, struct list_elem* le2, void *aux);
+
+/*Process fixed-point */
+int float_add_int(int a, int b);
+int float_sub_int(int a, int b);
+int float_mul_int(int a, int b);
+int float_div_int(int a, int b);
+int float_add_float(int a, int b);
+int float_sub_float(int a, int b);
+int float_mul_float(int a, int b);
+int float_div_float(int a, int b);
+
+/* Calculate methods*/
+int calculate_priority(int recent_cpu, int nice);
+int calculate_recent_cpu(int load_avg, int nice);
+
+/*Update values , priority*/
+void update_values();
+
+void update_priority();
