@@ -340,7 +340,13 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  if(thread_mlfqs) return;
+  if(new_priority >= thread_current() -> priority)
+    thread_current() -> priority = new_priority;
+  else {
+    thread_current() -> priority = new_priority;
+    thread_yield();
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -364,13 +370,13 @@ thread_set_nice (int nice UNUSED)
   else if(t->priority > PRI_MAX)
     t->priority = PRI_MAX;
 
- /*If running thread has larger priority than ay other new wating thread , else return yeild */
+ /*If running thread has larger priority than ay other new wating thread , else return yield */
     int max_prior =-1;
     if(!list_empty(&ready_list))
       max_prior = list_entry(list_front(&ready_list),struct thread, elem) ->priority;
 
     if(thread_current() -> priority <max_prior)
-      thread_yeild();
+      thread_yield();
 }
 
 /* Returns the current thread's nice value. */
@@ -481,6 +487,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  t->recent_cpu = running_thread() -> recent_cpu; /*Init thread's recent_cpu by inheriting from the parent thread*/
+  t->nice = running_thread() -> nice; /*Init thread's nice by inheriting from the parent thread*/
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -614,19 +622,19 @@ int float_add_int(int a, int b){
 }
 
 int float_sub_int(int a, int b){
-  return a- b * CONVERT;
+  return a - b * CONVERT;
 }
 
 float_mul_int(int a, int b){
-  return a*b;
+  return a * b;
 }
 
 float_div_int(int a, int b){
-  return a/b;
+  return a / b;
 }
 
 int float_add_float(int a, int b){
-  return a+b;
+  return a + b;
 }
 
 int float_sub_float(int a, int b){
@@ -650,9 +658,9 @@ int calculate_priority(int recent_cpu, int nice){
   return float_sub_float(float_sub_float(PRI_MAX*CONVERT,float_div_int(recent_cpu,4)),float_mul_int(nice*CONVERT,2))/CONVERT;
 }
 
-int calculate_recent_cpu(int load_avg, int nice){
+int calculate_recent_cpu(int current_recent_cpu, int load_avg, int nice){
   int decay  = float_div_float(float_mul_int(load_avg,2),float_add_int(float_mul_int(load_avg,2),1));
-  return float_add_int(decay,nice);
+  return float_add_int(float_mul_int(decay,current_recent_cpu),nice);
 }
 
 /*Update values , priority*/
@@ -677,7 +685,7 @@ void update_values(){
      struct thread* t = list_entry(le, struct thread,allelem);
       if(t != idle_thread)
         {
-          t->recent_cpu = calculate_recent_cpu(load_avg, t->nice);
+          t->recent_cpu = calculate_recent_cpu(t->recent_cpu,load_avg, t->nice);
         }
     }
 }
@@ -699,7 +707,7 @@ void update_priority() {
       else t->priority = tmp;
     }
 
-    /*If running thread has larger priority than ay other new wating thread , else return yeild */
+    /*If running thread has larger priority than ay other new wating thread , else return yield */
     tmp =-1;
     if(!list_empty(&ready_list))
       tmp = list_entry(list_front(&ready_list),struct thread, elem) ->priority;

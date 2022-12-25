@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <round.h>
 #include <stdio.h>
+#include <list.h>
 #include "devices/pit.h"
 #include "threads/interrupt.h"
 #include "threads/synch.h"
@@ -170,7 +171,17 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+  struct list_elem* le;
+  struct thread* t;
   ticks++;
+  /*Implement timer for advanced scheduler*/
+  if(thread_mlfqs){
+    thread_current() -> recent_cpu = float_add_int(thread_current() -> recent_cpu,1); // Increase recent_cpu in 1
+    if(ticks % TIMER_FREQ ==0)
+      update_values();
+    if(ticks % 4 == 0)
+      update_priority();
+  }
   thread_tick ();
 }
 
