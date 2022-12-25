@@ -109,7 +109,7 @@ struct thread
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
-extern bool thread_mlfqs = true;
+extern bool thread_mlfqs;
 
 void thread_init (void);
 void thread_start (void);
@@ -159,7 +159,7 @@ int float_div_float(int a, int b);
 
 /* Calculate methods*/
 int calculate_priority(int recent_cpu, int nice);
-int calculate_recent_cpu(int load_avg, int nice);
+int calculate_recent_cpu(int current_reccent_cpu, int load_avg, int nice);
 
 /*Update values , priority*/
 void update_values();
