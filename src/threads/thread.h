@@ -23,6 +23,9 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+#define NICE_DEFAULT 0
+#define RECENT_CPU_DEFAULT 0
+#define LOAD_AVERAGE_DEFAULT 0
 
 /* A kernel thread or user process.
 
@@ -158,8 +161,10 @@ int float_mul_float(int a, int b);
 int float_div_float(int a, int b);
 
 /* Calculate methods*/
-int calculate_priority(int recent_cpu, int nice);
-int calculate_recent_cpu(int current_reccent_cpu, int load_avg, int nice);
+int calculate_priority( struct thread* t);
+int calculate_recent_cpu(struct thread* t);
+int calculate_load_avg(struct thread* t, int ready_threads);
+void increase_recent_cpu(int num);
 
 /*Update values , priority*/
 void update_values();

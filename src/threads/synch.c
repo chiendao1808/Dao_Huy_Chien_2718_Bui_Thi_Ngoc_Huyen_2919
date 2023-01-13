@@ -192,6 +192,13 @@ lock_init (struct lock *lock)
 void
 lock_acquire (struct lock *lock)
 {
+  // Disable priority donations
+  if(thread_mlfqs)
+  {
+    sema_down(&lock -> semaphore);
+    lock -> holder = thread_current();
+    return;
+  }
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
@@ -230,8 +237,12 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
   lock->holder = NULL;
+  // Disable priority donation
+  if(thread_mlfqs){  
+    sema_up(&lock -> semaphore);
+    return; 
+  }
   sema_up (&lock->semaphore);
 }
 
