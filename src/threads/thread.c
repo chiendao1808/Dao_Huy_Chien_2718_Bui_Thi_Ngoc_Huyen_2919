@@ -393,14 +393,14 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  return float_mul_int(load_avg, 100)/CONVERT;
+  return round_to_nearest(float_mul_int(load_avg, 100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  return float_mul_int(thread_current()->recent_cpu, 100)/CONVERT;
+  return round_to_nearest(float_mul_int(thread_current()->recent_cpu, 100));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -613,6 +613,10 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+int round_to_nearest(int num){
+  return num >= 0 ? (num + CONVERT/2)/CONVERT : (num - CONVERT/2)/CONVERT;
+}
 
 int float_add_int(int x, int n){
   return x + n * CONVERT;

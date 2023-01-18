@@ -151,6 +151,7 @@ int thread_get_load_avg (void);
 bool priority_compare(struct list_elem* le1, struct list_elem* le2, void *aux);
 
 /*Process fixed-point */
+int round_to_nearest (int num);
 int float_add_int(int x, int n);
 int float_sub_int(int x, int n);
 int float_mul_int(int x, int n);
