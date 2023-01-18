@@ -8,7 +8,11 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-  
+
+/* List of processes in THREAD_BLOCKED state, that is, processes
+   that are blocked to run and not actually running. */
+static struct list sleeped_list;
+
 /* See [8254] for hardware details of the 8254 timer chip. */
 
 #if TIMER_FREQ < 19
@@ -38,6 +42,8 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+	list_init(&sleeped_list);
+
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -91,10 +97,18 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
+  struct thread *t = thread_current ();
+	enum intr_level old_level;
 
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+	old_level = intr_disable();
+	
+	t->sleep_time = ticks;
+	t->start_sleep_time = start;
+	list_push_back (&sleeped_list, &t->elem);
+  
+	thread_block();	
+	intr_set_level(old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -171,17 +185,31 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+	struct list_elem *e;
+	struct thread* t;
   ticks++;
-  thread_tick();
-   /*Implement timer for advanced scheduler*/
-  if(thread_mlfqs){
-    increase_recent_cpu(1);
-    if(timer_ticks() % TIMER_FREQ == 0){
-      update_values();
-    if(timer_ticks() % 4 == 0)
-      update_priority();
+	
+	for(e = list_begin(&sleeped_list); e != list_end(&sleeped_list); ){
+		t = list_entry(e, struct thread, elem);
+		if(timer_elapsed(t->start_sleep_time) >= t->sleep_time){
+			e = list_remove(e);
+			thread_unblock(t);
+		}
+		else e = list_next(e);
+	}
+	
+	if(thread_mlfqs){
+		increase_recent_cpu(1);
+		if(ticks % TIMER_FREQ == 0)
+    {
+        update_load_avg();
+        update_recent_cpu();        
     }
-  }
+			
+		if(ticks % 4 == 0)
+			update_priority();
+	}
+  thread_tick ();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

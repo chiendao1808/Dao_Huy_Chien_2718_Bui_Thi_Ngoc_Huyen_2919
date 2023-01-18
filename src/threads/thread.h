@@ -151,14 +151,14 @@ int thread_get_load_avg (void);
 bool priority_compare(struct list_elem* le1, struct list_elem* le2, void *aux);
 
 /*Process fixed-point */
-int float_add_int(int a, int b);
-int float_sub_int(int a, int b);
-int float_mul_int(int a, int b);
-int float_div_int(int a, int b);
-int float_add_float(int a, int b);
-int float_sub_float(int a, int b);
-int float_mul_float(int a, int b);
-int float_div_float(int a, int b);
+int float_add_int(int x, int n);
+int float_sub_int(int x, int n);
+int float_mul_int(int x, int n);
+int float_div_int(int x, int n);
+int float_add_float(int x, int y);
+int float_sub_float(int x, int y);
+int float_mul_float(int x, int y);
+int float_div_float(int x, int y);
 
 /* Calculate methods*/
 int calculate_priority( struct thread* t);
@@ -166,7 +166,9 @@ int calculate_recent_cpu(struct thread* t);
 int calculate_load_avg(struct thread* t, int ready_threads);
 void increase_recent_cpu(int num);
 
-/*Update values , priority*/
-void update_values();
+/*Update values , load_avg priority*/
+void update_recent_cpu(void);
 
-void update_priority();
+void update_load_avg(void);
+
+void update_priority(void);
