@@ -23,9 +23,6 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-#define NICE_DEFAULT 0
-#define RECENT_CPU_DEFAULT 0
-#define LOAD_AVERAGE_DEFAULT 0
 
 /* A kernel thread or user process.
 
@@ -90,11 +87,9 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                         /* Priority. */
-    int nice ;                           /* Nice Value of thread*/
-    int recent_cpu;                      /* Recent CPU usage time*/
-    int64_t sleep_time;                           /*  Sleep time*/ 
-    int64_t start_sleep_time;
+    int priority;                       /* Priority. */
+    int64_t wakeup_time;                /* when the thread is sleeping, this indicates the wake up time,
+                                          I hate putting this here ):*/
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
@@ -102,7 +97,12 @@ struct thread
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
+    char *prog_name;
     uint32_t *pagedir;                  /* Page directory. */
+    struct list children;
+    struct list desc_table;
+    int next_fd;
+    struct file *executable; // file structure referring the the executable, used to deny writing to the file as long as the process is running(and close it upon exit)
 #endif
 
     /* Owned by thread.c. */
@@ -117,20 +117,22 @@ extern bool thread_mlfqs;
 void thread_init (void);
 void thread_start (void);
 
-void thread_tick (void);
+void thread_tick (int64_t ticks);
 void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
+void thread_sleep (int64_t until);
 void thread_block (void);
 void thread_unblock (struct thread *);
 
 struct thread *thread_current (void);
 tid_t thread_tid (void);
+
 const char *thread_name (void);
 
-void thread_exit (void) NO_RETURN;
+void thread_exit (int status) NO_RETURN;
 void thread_yield (void);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
@@ -144,29 +146,6 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+struct thread *thread_get(tid_t tid);
 
 #endif /* threads/thread.h */
-
-/*Compare two threads's list (non-empty) by priority */
-bool priority_compare(struct list_elem* le1, struct list_elem* le2, void *aux);
-
-/*Process fixed-point */
-int float_add_int(int a, int b);
-int float_sub_int(int a, int b);
-int float_mul_int(int a, int b);
-int float_div_int(int a, int b);
-int float_add_float(int a, int b);
-int float_sub_float(int a, int b);
-int float_mul_float(int a, int b);
-int float_div_float(int a, int b);
-
-/* Calculate methods*/
-int calculate_priority( struct thread* t);
-int calculate_recent_cpu(struct thread* t);
-int calculate_load_avg(struct thread* t, int ready_threads);
-void increase_recent_cpu(int num);
-
-/*Update values , priority*/
-void update_values();
-
-void update_priority();

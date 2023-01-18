@@ -84,7 +84,6 @@ fail (const char *format, ...)
 {
   va_list args;
   
-  printf("Error %s:",format);
   printf ("(%s) FAIL: ", test_name);
   va_start (args, format);
   vprintf (format, args);

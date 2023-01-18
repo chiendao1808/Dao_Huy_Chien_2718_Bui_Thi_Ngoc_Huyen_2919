@@ -133,8 +133,8 @@ main (void)
   run_actions (argv);
 
   /* Finish up. */
-  shutdown();
-  thread_exit ();
+  shutdown ();
+  thread_exit (0);
 }
 
 /* Clear the "BSS", a segment that should be initialized to
@@ -285,6 +285,7 @@ run_task (char **argv)
   
   printf ("Executing '%s':\n", task);
 #ifdef USERPROG
+  process_init();
   process_wait (process_execute (task));
 #else
   run_test (task);
